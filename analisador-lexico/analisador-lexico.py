@@ -4,18 +4,19 @@ Tabela_de_simbolos = {
     'varfim': {'token': 'varfim', 'tipo': ' '},
     'escreva': {'token': 'escreva', 'tipo': ' '},
     'leia': {'token': 'leia', 'tipo': ' '},
-    'se': {'token': 'se', 'tipo': '--'},
+    'se': {'token': 'se', 'tipo': ' '},
     'entao': {'token': 'entao', 'tipo': ' '},
     'fimse': {'token': 'fimse', 'tipo': ' '},
     'fim': {'token': 'fim', 'tipo': ' '},
     'inteiro': {'token': 'inteiro', 'tipo': 'inteiro'},
-    'lit': {'token': 'lit', 'tipo': 'literal'},
+    'lit': {'token': 'lit', 'tipo': 'lit'},
+    'literal' :{'token':'literal', 'tipo':'lit'},
     'real': {'token': 'real', 'tipo': 'real'}
 }
 
 Estados_finais_AFD = {
     'S1':'Num',
-    'S6':'lit',
+    'S6':'literal',
     'S7':'id',
     'S8':'OPM',
     'S9':'AB_P',
@@ -175,17 +176,15 @@ def rotular(caracter, estado):
         return '.*'
     if(caracter is not '}' and estado is 'S19' and ehAschii_32_126(caracter)):
         return '.*'
-
-    rotulos_S0 = {' ': 'Espaco', '\t': 'Tab', '\n': 'Salto'}
-    if(ehTab_espaco_salto(caracter) and estado is 'S0'):
-        return rotulos_S0[caracter]
-
     if(caracter is '}' and estado is 'S19'):
         return 'Comentario'
     if(ehLiteral(caracter)):
         return 'L'
     if(ehNumero(caracter)):
         return 'D'
+    rotulos_S0 = {' ': 'Espaco', '\t': 'Tab', '\n': 'Salto'}
+    if(ehTab_espaco_salto(caracter) and estado is 'S0'):
+        return rotulos_S0[caracter]
     return caracter
 
 def getToken(estado):
@@ -250,7 +249,6 @@ def analisador_lexico(arquivo):
         if(arquivo.cont_caractere < len(arquivo.texto)):
             caractere = arquivo.texto[arquivo.cont_caractere]
             arquivo.cont_caractere = arquivo.cont_caractere + 1
-
             rotulo = rotular(caractere, estado_atual)
 
             if(caractere is '\n'):
@@ -261,7 +259,7 @@ def analisador_lexico(arquivo):
         else:
             arquivo.notEOF = False
             rotulo = 'EOF'
-            caractere = rotulo
+            caractere = ''
 
         if(rotulo in Tabela_AFD[estado_atual].keys()):
             estado_atual = Tabela_AFD[estado_atual][rotulo]
@@ -275,6 +273,7 @@ def analisador_lexico(arquivo):
                     atualizarTabelaSimbolos(string)
                     return string
         elif(ehEstadofinalExcecao(estado_atual)):
+            arquivo.cont_caractere = arquivo.cont_caractere - 1
             string = getTokenAndTipo(string.lexema, estado_atual)
             atualizarTabelaSimbolos(string)
             return string
