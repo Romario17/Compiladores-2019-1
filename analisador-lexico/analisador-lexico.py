@@ -1,13 +1,13 @@
 Tabela_de_simbolos = {
-    'inicio': {'token': 'inicio', 'tipo': '--'},
-    'varinicio': {'token': 'varinicio', 'tipo': '--'},
-    'varfim': {'token': 'varfim', 'tipo': '--'},
-    'escreva': {'token': 'escreva', 'tipo': '--'},
-    'leia': {'token': 'leia', 'tipo': '--'},
+    'inicio': {'token': 'inicio', 'tipo': ' '},
+    'varinicio': {'token': 'varinicio', 'tipo': ' '},
+    'varfim': {'token': 'varfim', 'tipo': ' '},
+    'escreva': {'token': 'escreva', 'tipo': ' '},
+    'leia': {'token': 'leia', 'tipo': ' '},
     'se': {'token': 'se', 'tipo': '--'},
-    'entao': {'token': 'entao', 'tipo': '--'},
-    'fimse': {'token': 'fimse', 'tipo': '--'},
-    'fim': {'token': 'fim', 'tipo': '--'},
+    'entao': {'token': 'entao', 'tipo': ' '},
+    'fimse': {'token': 'fimse', 'tipo': ' '},
+    'fim': {'token': 'fim', 'tipo': ' '},
     'inteiro': {'token': 'inteiro', 'tipo': 'inteiro'},
     'lit': {'token': 'lit', 'tipo': 'literal'},
     'real': {'token': 'real', 'tipo': 'real'}
@@ -15,7 +15,7 @@ Tabela_de_simbolos = {
 
 Estados_finais_AFD = {
     'S1':'Num',
-    'S6':'literal',
+    'S6':'lit',
     'S7':'id',
     'S8':'OPM',
     'S9':'AB_P',
@@ -149,6 +149,9 @@ Tabela_AFD = {
     }
 }
 
+def ehAschii_32_126(caracter):
+    return caracter in (" !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}\t\n")
+
 def ehTab_espaco_salto(caracter):
     return caracter in ('\t', ' ', '\n')
 
@@ -168,23 +171,27 @@ def ehEstadofinalExcecao(estado):
     return estado in ('S1', 'S7', 'S12', 'S13', 'S21', 'S22')
 
 def rotular(caracter, estado):
+    if(caracter is not '"' and estado is 'S5' and ehAschii_32_126(caracter)):
+        return '.*'
+    if(caracter is not '}' and estado is 'S19' and ehAschii_32_126(caracter)):
+        return '.*'
+
     rotulos_S0 = {' ': 'Espaco', '\t': 'Tab', '\n': 'Salto'}
     if(ehTab_espaco_salto(caracter) and estado is 'S0'):
         return rotulos_S0[caracter]
+
     if(caracter is '}' and estado is 'S19'):
         return 'Comentario'
     if(ehLiteral(caracter)):
         return 'L'
     if(ehNumero(caracter)):
         return 'D'
-    if(caracter not in ('"','}') and estado in ('S5','S19')):
-        return '.*'
     return caracter
 
 def getToken(estado):
     if(estado in Estados_finais_AFD.keys()):
         return Estados_finais_AFD[estado]
-    return '--'
+    return ' '
 
 def getTipo(token, lexema, estado):
     if(token is 'literal'):
@@ -196,7 +203,7 @@ def getTipo(token, lexema, estado):
             return Tabela_de_simbolos['real']['tipo']
     if(token in ('OPM','OPR','RCB')):
         return lexema
-    return '--'
+    return ' '
 
 class String:
     def __init__(self):
@@ -215,15 +222,15 @@ def getTokenAndTipo(lexema, estado):
         string.tipo = getTipo(string.token, lexema, estado)
     return string
 
-def atualizarTabelaSimbolos(string:String):
-    if(string.lexema not in Tabela_de_simbolos.keys()):
+def atualizarTabelaSimbolos(string):
+    if(not string.lexema in Tabela_de_simbolos.keys()):
         Tabela_de_simbolos[string.lexema] = {'token':string.token, 'tipo':string.tipo}
 
 def erro_lexico(erro):
     if(erro['estado'] in Erros_lexicos.keys()):
         return 'Erro: {}\tLinha: {}\tColuna: {}\n{}'.format(Erros_lexicos[erro['estado']],
             erro['linha'],erro['coluna'],erro['lexema'])
-    return 'Erros não foram identificados!'
+    return 'Erros nao foram identificados!'
 
 class Arquivo:
     def __init__(self, texto):
@@ -233,7 +240,7 @@ class Arquivo:
         self.coluna = 1
         self.notEOF = True
 
-def analisador_lexico(arquivo:Arquivo):
+def analisador_lexico(arquivo):
     string = String()
     caractere = ''
     rotulo = ''
@@ -252,14 +259,16 @@ def analisador_lexico(arquivo:Arquivo):
             else:
                 arquivo.coluna = arquivo.coluna + 1
         else:
-            arquivo.eof = True
+            arquivo.notEOF = False
             rotulo = 'EOF'
             caractere = rotulo
 
         if(rotulo in Tabela_AFD[estado_atual].keys()):
             estado_atual = Tabela_AFD[estado_atual][rotulo]
-            if(rotulo in ('Comentario', 'Tab', 'Espaco', 'Salto')):
+            if(rotulo in ('Comentario', 'Tab', 'Espaco', 'Salto') and estado_atual is 'S0'):
                 print(rotulo + ' Ignorado\n')
+            else:
+                string.lexema = string.lexema + caractere
             if(ehEstadofinal(estado_atual)):
                 if(ehEstadofinalExcecao(estado_atual) is not True):
                     string = getTokenAndTipo(string.lexema, estado_atual)
@@ -273,12 +282,12 @@ def analisador_lexico(arquivo:Arquivo):
             erro = {'linha':arquivo.linha,'coluna':arquivo.coluna, 'estado':estado_atual, 'lexema':string.lexema+caractere}
             print(erro_lexico(erro)+'\n')
             estado_atual = 'S0'
+            string.lexema = ''
 
 def main():
     arquivo = open('texto.alg', 'r')
     texto_codigo = arquivo.read()
     arquivo_texto = Arquivo(texto_codigo)
-    retorno = String()
 
     while(arquivo_texto.notEOF):
         retorno = analisador_lexico(arquivo_texto)
