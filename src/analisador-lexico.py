@@ -284,7 +284,7 @@ def analisador_lexico(arquivo):
             string.lexema = ''
 
 def main():
-    arquivo = open('texto.alg', 'r')
+    arquivo = open('doc/texto.alg', 'r')
     texto_codigo = arquivo.read()
     arquivo_texto = Arquivo(texto_codigo)
 
